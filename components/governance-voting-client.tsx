@@ -1,82 +1,103 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useAccount } from "wagmi"
-import { ConnectKitButton } from "connectkit"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Textarea } from "@/components/ui/textarea"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ThumbsUp, ThumbsDown, Minus, Clock, Users, ExternalLink, RefreshCw, Wallet, Shield } from "lucide-react"
-import { useProposalData, useProposalCount, PROPOSAL_STATES } from "@/hooks/useProposalData"
-import { useSubgraphProposals, getProposalTitle, formatProposalDescription } from "@/hooks/useSubgraphProposals"
-import { useVoting, VoteType } from "@/hooks/useVoting"
-import { formatDistanceToNow } from "date-fns"
+import { useState, useEffect } from "react";
+import { useAccount } from "wagmi";
+import { ConnectKitButton } from "connectkit";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  ThumbsUp,
+  ThumbsDown,
+  Minus,
+  Clock,
+  Users,
+  ExternalLink,
+  RefreshCw,
+  Wallet,
+  Shield,
+} from "lucide-react";
+
+import {
+  useSubgraphProposals,
+  getProposalTitle,
+  formatProposalDescription,
+} from "@/hooks/useSubgraphProposals";
+import { useVoting, VoteType } from "@/hooks/useVoting";
+import { formatDistanceToNow } from "date-fns";
 
 interface GovernanceVotingClientProps {
-  isDarkMode?: boolean
+  isDarkMode?: boolean;
 }
 
-export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingClientProps) {
-  const { address, isConnected } = useAccount()
-  const { proposalCount } = useProposalCount()
-  const [selectedProposal, setSelectedProposal] = useState<number>(1)
-  const [voteReason, setVoteReason] = useState("")
-  const [showVoteForm, setShowVoteForm] = useState(false)
-  const [selectedVoteType, setSelectedVoteType] = useState<VoteType | null>(null)
+export function GovernanceVotingClient({
+  isDarkMode = true,
+}: GovernanceVotingClientProps) {
+  const { address, isConnected } = useAccount();
+  const [selectedProposal, setSelectedProposal] = useState<number>(1);
+  const [voteReason, setVoteReason] = useState("");
+  const [showVoteForm, setShowVoteForm] = useState(false);
+  const [selectedVoteType, setSelectedVoteType] = useState<VoteType | null>(
+    null,
+  );
 
   // Fetch subgraph proposals
-  const { proposals: subgraphProposals, isLoading: subgraphLoading, error: subgraphError } = useSubgraphProposals(50, 0)
+  const {
+    proposals: subgraphProposals,
+    isLoading: subgraphLoading,
+    error: subgraphError,
+  } = useSubgraphProposals(50, 0);
 
-  const { proposalData, isLoading, error, refetch } = useProposalData(
-    selectedProposal,
-    address
-  )
-  
-  const { castVote, isVoting, isConfirmed, voteHash, error: votingError } = useVoting()
+  const {
+    castVote,
+    isVoting,
+    isConfirmed,
+    voteHash,
+    error: votingError,
+  } = useVoting();
 
   // Auto-select the latest proposal when component loads
   useEffect(() => {
     if (subgraphProposals.length > 0 && selectedProposal === 1) {
-      const latestProposal = subgraphProposals[0]
-      setSelectedProposal(Number(latestProposal.id))
+      const latestProposal = subgraphProposals[0];
+      setSelectedProposal(Number(latestProposal.id));
     }
-  }, [subgraphProposals, selectedProposal])
+  }, [subgraphProposals, selectedProposal]);
 
   // Reset vote form when vote is confirmed
   useEffect(() => {
     if (isConfirmed) {
-      setShowVoteForm(false)
-      setVoteReason("")
-      setSelectedVoteType(null)
-      refetch()
+      setShowVoteForm(false);
+      setVoteReason("");
+      setSelectedVoteType(null);
     }
-  }, [isConfirmed, refetch])
+  }, [isConfirmed]);
 
   const handleVote = async () => {
-    if (!selectedVoteType || !proposalData) return
-    
+    if (!selectedVoteType) return;
+
     try {
-      await castVote(proposalData.id, selectedVoteType, voteReason)
+      //await castVote(proposalData.id, selectedVoteType, voteReason);
     } catch (error) {
-      console.error("Failed to vote:", error)
+      console.error("Failed to vote:", error);
     }
-  }
+  };
 
   const formatVotes = (votes: bigint) => {
-    const votesNumber = Number(votes)
+    const votesNumber = Number(votes);
     if (votesNumber >= 1000000) {
-      return `${(votesNumber / 1000000).toFixed(1)}M`
+      return `${(votesNumber / 1000000).toFixed(1)}M`;
     } else if (votesNumber >= 1000) {
-      return `${(votesNumber / 1000).toFixed(1)}K`
+      return `${(votesNumber / 1000).toFixed(1)}K`;
     }
-    return votesNumber.toString()
-  }
+    return votesNumber.toString();
+  };
 
   const getProposalStatus = (state: number) => {
-    const status = PROPOSAL_STATES[state as keyof typeof PROPOSAL_STATES] || "Unknown"
+    const status =
+      PROPOSAL_STATES[state as keyof typeof PROPOSAL_STATES] || "Unknown";
     const colors = {
       Pending: "bg-yellow-100 text-yellow-800",
       Active: "bg-green-100 text-green-800",
@@ -86,50 +107,69 @@ export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingCl
       Queued: "bg-purple-100 text-purple-800",
       Expired: "bg-gray-100 text-gray-800",
       Executed: "bg-green-100 text-green-800",
-    }
-    return { status, color: colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800" }
-  }
+    };
+    return {
+      status,
+      color:
+        colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800",
+    };
+  };
 
-  const isVotingOpen = proposalData?.state === 1 // Active state
+  const isVotingOpen = proposalData?.state === 1; // Active state
 
   const renderWalletConnection = () => {
-    if (isConnected) return null
+    if (isConnected) return null;
 
     return (
-      <Card className={`mb-6 ${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+      <Card
+        className={`mb-6 ${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+      >
         <CardContent className="p-6">
           <div className="text-center space-y-4">
             <div className="flex justify-center">
-              <div className={`p-3 rounded-full ${isDarkMode ? "bg-gray-700" : "bg-gray-100"}`}>
-                <Wallet className={`w-8 h-8 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`} />
+              <div
+                className={`p-3 rounded-full ${isDarkMode ? "bg-gray-700" : "bg-gray-100"}`}
+              >
+                <Wallet
+                  className={`w-8 h-8 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
+                />
               </div>
             </div>
             <div>
-              <h3 className={`text-lg font-semibold mb-2 ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}>
+              <h3
+                className={`text-lg font-semibold mb-2 ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}
+              >
                 Connect Your Wallet to Vote
               </h3>
-              <p className={`text-sm mb-4 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                Connect your wallet to participate in governance voting on Ethereum mainnet
+              <p
+                className={`text-sm mb-4 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
+              >
+                Connect your wallet to participate in governance voting on
+                Ethereum mainnet
               </p>
               <ConnectKitButton />
             </div>
-            <div className={`text-xs ${isDarkMode ? "text-gray-500" : "text-gray-500"}`}>
+            <div
+              className={`text-xs ${isDarkMode ? "text-gray-500" : "text-gray-500"}`}
+            >
               <div className="flex items-center justify-center gap-2">
                 <Shield className="w-3 h-3" />
-                <span>Voting uses castRefundableVoteWithReason with clientId: 22</span>
+                <span>
+                  Voting uses castRefundableVoteWithReason with clientId: 22
+                </span>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
-    )
-  }
+    );
+  };
 
   const renderProposalSelector = () => (
     <div className="flex flex-wrap gap-2 mb-6">
       {subgraphProposals.slice(0, 10).map((proposal) => {
-        const proposalId = Number(proposal.id)
-        const title = getProposalTitle(proposal.description)
+        const proposalId = Number(proposal.id);
+        const title = getProposalTitle(proposal.description);
         return (
           <Button
             key={proposalId}
@@ -140,30 +180,36 @@ export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingCl
           >
             #{proposalId}
           </Button>
-        )
+        );
       })}
     </div>
-  )
+  );
 
   const renderVotingResults = () => {
-    if (!proposalData) return null
+    if (!proposalData) return null;
 
-    const totalVotes = Number(proposalData.totalVotes)
-    const forVotes = Number(proposalData.forVotes)
-    const againstVotes = Number(proposalData.againstVotes)
-    const abstainVotes = Number(proposalData.abstainVotes)
+    const totalVotes = Number(proposalData.totalVotes);
+    const forVotes = Number(proposalData.forVotes);
+    const againstVotes = Number(proposalData.againstVotes);
+    const abstainVotes = Number(proposalData.abstainVotes);
 
-    const forPercentage = totalVotes > 0 ? (forVotes / totalVotes) * 100 : 0
-    const againstPercentage = totalVotes > 0 ? (againstVotes / totalVotes) * 100 : 0
-    const abstainPercentage = totalVotes > 0 ? (abstainVotes / totalVotes) * 100 : 0
+    const forPercentage = totalVotes > 0 ? (forVotes / totalVotes) * 100 : 0;
+    const againstPercentage =
+      totalVotes > 0 ? (againstVotes / totalVotes) * 100 : 0;
+    const abstainPercentage =
+      totalVotes > 0 ? (abstainVotes / totalVotes) * 100 : 0;
 
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className={`font-semibold ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}>
+          <h3
+            className={`font-semibold ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}
+          >
             Voting Results
           </h3>
-          <span className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
+          <span
+            className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
+          >
             {formatVotes(proposalData.totalVotes)} total votes
           </span>
         </div>
@@ -177,7 +223,9 @@ export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingCl
                 For ({formatVotes(proposalData.forVotes)})
               </span>
             </div>
-            <span className={`font-medium ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}>
+            <span
+              className={`font-medium ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}
+            >
               {forPercentage.toFixed(1)}%
             </span>
           </div>
@@ -193,7 +241,9 @@ export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingCl
                 Against ({formatVotes(proposalData.againstVotes)})
               </span>
             </div>
-            <span className={`font-medium ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}>
+            <span
+              className={`font-medium ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}
+            >
               {againstPercentage.toFixed(1)}%
             </span>
           </div>
@@ -209,42 +259,50 @@ export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingCl
                 Abstain ({formatVotes(proposalData.abstainVotes)})
               </span>
             </div>
-            <span className={`font-medium ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}>
+            <span
+              className={`font-medium ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}
+            >
               {abstainPercentage.toFixed(1)}%
             </span>
           </div>
           <Progress value={abstainPercentage} className="h-2" />
         </div>
       </div>
-    )
-  }
+    );
+  };
 
   const renderVotingSection = () => {
     if (!isConnected) {
       return (
         <div className="text-center py-6">
-          <p className={`mb-4 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
+          <p
+            className={`mb-4 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
+          >
             Connect your wallet to vote on proposals
           </p>
           <ConnectKitButton />
         </div>
-      )
+      );
     }
 
     if (!isVotingOpen) {
       return (
-        <div className={`text-center py-4 text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
+        <div
+          className={`text-center py-4 text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
+        >
           Voting is not currently open for this proposal
         </div>
-      )
+      );
     }
 
     if (proposalData?.hasVoted) {
       return (
-        <div className={`text-center py-4 text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
+        <div
+          className={`text-center py-4 text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
+        >
           You have already voted on this proposal
         </div>
-      )
+      );
     }
 
     if (!showVoteForm) {
@@ -258,7 +316,7 @@ export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingCl
             Cast Your Vote
           </Button>
         </div>
-      )
+      );
     }
 
     return (
@@ -274,7 +332,9 @@ export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingCl
             For
           </Button>
           <Button
-            variant={selectedVoteType === VoteType.Against ? "default" : "outline"}
+            variant={
+              selectedVoteType === VoteType.Against ? "default" : "outline"
+            }
             onClick={() => setSelectedVoteType(VoteType.Against)}
             className="flex items-center gap-2"
             disabled={isVoting}
@@ -283,7 +343,9 @@ export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingCl
             Against
           </Button>
           <Button
-            variant={selectedVoteType === VoteType.Abstain ? "default" : "outline"}
+            variant={
+              selectedVoteType === VoteType.Abstain ? "default" : "outline"
+            }
             onClick={() => setSelectedVoteType(VoteType.Abstain)}
             className="flex items-center gap-2"
             disabled={isVoting}
@@ -319,9 +381,9 @@ export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingCl
           <Button
             variant="outline"
             onClick={() => {
-              setShowVoteForm(false)
-              setSelectedVoteType(null)
-              setVoteReason("")
+              setShowVoteForm(false);
+              setSelectedVoteType(null);
+              setVoteReason("");
             }}
             disabled={isVoting}
           >
@@ -346,22 +408,28 @@ export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingCl
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   if (subgraphLoading || isLoading) {
     return (
-      <Card className={`${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+      <Card
+        className={`${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+      >
         <CardContent className="p-6">
-          <div className="text-center">Loading proposal data from Nouns subgraph...</div>
+          <div className="text-center">
+            Loading proposal data from Nouns subgraph...
+          </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   if (subgraphError || error) {
     return (
-      <Card className={`${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+      <Card
+        className={`${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+      >
         <CardContent className="p-6">
           <div className="text-center text-red-600">
             Error: {subgraphError || error}
@@ -371,34 +439,48 @@ export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingCl
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   if (!proposalData || subgraphProposals.length === 0) {
     return (
-      <Card className={`${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+      <Card
+        className={`${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+      >
         <CardContent className="p-6">
-          <div className="text-center">No proposal data available from Nouns subgraph</div>
+          <div className="text-center">
+            No proposal data available from Nouns subgraph
+          </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
-  const { status, color } = getProposalStatus(proposalData.state)
-  
+  const { status, color } = getProposalStatus(proposalData.state);
+
   // Find the current proposal in subgraph data
-  const currentSubgraphProposal = subgraphProposals.find(p => Number(p.id) === proposalData.id)
-  const proposalTitle = currentSubgraphProposal ? getProposalTitle(currentSubgraphProposal.description) : `Proposal ${proposalData.id}`
-  const proposalDescription = currentSubgraphProposal ? formatProposalDescription(currentSubgraphProposal.description) : "No description available"
+  const currentSubgraphProposal = subgraphProposals.find(
+    (p) => Number(p.id) === proposalData.id,
+  );
+  const proposalTitle = currentSubgraphProposal
+    ? getProposalTitle(currentSubgraphProposal.description)
+    : `Proposal ${proposalData.id}`;
+  const proposalDescription = currentSubgraphProposal
+    ? formatProposalDescription(currentSubgraphProposal.description)
+    : "No description available";
 
   return (
     <div className="space-y-6">
       {renderWalletConnection()}
-      
-      <Card className={`${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+
+      <Card
+        className={`${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+      >
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className={`${isDarkMode ? "text-gray-200" : "text-gray-900"}`}>
+            <CardTitle
+              className={`${isDarkMode ? "text-gray-200" : "text-gray-900"}`}
+            >
               Nouns DAO Governance Voting Client
             </CardTitle>
             <div className="flex items-center gap-2">
@@ -416,36 +498,54 @@ export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingCl
         </CardHeader>
         <CardContent className="space-y-6">
           {renderProposalSelector()}
-          
+
           <div className="grid gap-6 md:grid-cols-2">
             <div>
-              <h3 className={`font-semibold mb-4 ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}>
+              <h3
+                className={`font-semibold mb-4 ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}
+              >
                 {proposalTitle}
               </h3>
-              
+
               <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-2 text-sm">
-                  <Clock className={`w-4 h-4 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`} />
-                  <span className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
-                    Deadline: {formatDistanceToNow(new Date(Number(proposalData.deadline) * 1000), { addSuffix: true })}
+                  <Clock
+                    className={`w-4 h-4 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
+                  />
+                  <span
+                    className={isDarkMode ? "text-gray-400" : "text-gray-600"}
+                  >
+                    Deadline:{" "}
+                    {formatDistanceToNow(
+                      new Date(Number(proposalData.deadline) * 1000),
+                      { addSuffix: true },
+                    )}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <Users className={`w-4 h-4 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`} />
-                  <span className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
+                  <Users
+                    className={`w-4 h-4 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
+                  />
+                  <span
+                    className={isDarkMode ? "text-gray-400" : "text-gray-600"}
+                  >
                     Contract: 0x6f3E...223d
                   </span>
                 </div>
                 {currentSubgraphProposal?.clientId && (
                   <div className="flex items-center gap-2 text-sm">
-                    <span className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
+                    <span
+                      className={isDarkMode ? "text-gray-400" : "text-gray-600"}
+                    >
                       Client ID: {currentSubgraphProposal.clientId}
                     </span>
                   </div>
                 )}
               </div>
 
-              <div className={`text-sm mb-4 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>
+              <div
+                className={`text-sm mb-4 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
+              >
                 {proposalDescription}
               </div>
 
@@ -453,7 +553,9 @@ export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingCl
             </div>
 
             <div>
-              <h3 className={`font-semibold mb-4 ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}>
+              <h3
+                className={`font-semibold mb-4 ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}
+              >
                 Cast Your Vote
               </h3>
               {renderVotingSection()}
@@ -462,5 +564,5 @@ export function GovernanceVotingClient({ isDarkMode = true }: GovernanceVotingCl
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
